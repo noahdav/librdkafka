@@ -83,8 +83,9 @@ void oauthbearer_token_refresh_cb_trampoline (rd_kafka_t *rk, void *opaque);
          rd_kafka_t *rk,
          const char *broker_name,
          int32_t broker_id,
-         int preverify_ok, void *x509_ctx,
-         int depth,
+         int preverify_ok,
+         rd_kafka_verify_ctx_t *x509_ctx,
+         rd_kafka_ssl_verify_ft *ft,
          const char *buf, size_t size,
          char *errstr, size_t errstr_size,
          void *opaque);
@@ -1229,6 +1230,21 @@ class ProducerImpl : virtual public Producer, virtual public HandleImpl {
   static Producer *create (Conf *conf, std::string &errstr);
 
 };
+
+class SslCertificateHelperImpl : virtual public SslCertificateHelper {
+public:
+
+    SslCertificateHelperImpl(rd_kafka_ssl_verify_ft *ft, rd_kafka_verify_ctx_t *ctx);
+    int get_error() const;
+    int get_depth() const;
+    void set_error(int error);
+    void *get_x509_ctx() const;
+
+private:
+    rd_kafka_ssl_verify_ft *ft_;
+    rd_kafka_verify_ctx_t *ctx_;
+};
+
 
 
 

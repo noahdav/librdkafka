@@ -143,18 +143,20 @@ void RdKafka::oauthbearer_token_refresh_cb_trampoline (rd_kafka_t *rk,
 int RdKafka::ssl_cert_verify_cb_trampoline (rd_kafka_t *rk,
                                             const char *broker_name,
                                             int32_t broker_id,
-                                            int preverify_ok, void *x509_ctx,
-                                            int depth,
+                                            int preverify_ok,
+                                            rd_kafka_verify_ctx_t *x509_ctx,
+                                            rd_kafka_ssl_verify_ft *ft,
                                             const char *buf, size_t size,
                                             char *errstr, size_t errstr_size,
                                             void *opaque) {
   RdKafka::HandleImpl *handle = static_cast<RdKafka::HandleImpl *>(opaque);
   std::string errbuf;
+  RdKafka::SslCertificateHelperImpl helper(ft, x509_ctx);
 
   bool res = 0 != handle->ssl_cert_verify_cb_->
     ssl_cert_verify_cb(std::string(broker_name), broker_id,
-                       0 != preverify_ok, x509_ctx,
-                       depth,
+                       0 != preverify_ok,
+                       &helper,
                        buf, size,
                        errbuf);
 
@@ -378,6 +380,32 @@ RdKafka::HandleImpl::set_log_queue (RdKafka::Queue *queue) {
         }
         return static_cast<RdKafka::ErrorCode>(
                 rd_kafka_set_log_queue(rk_, rkqu));
+}
+
+
+
+RdKafka::SslCertificateHelperImpl::SslCertificateHelperImpl(rd_kafka_ssl_verify_ft *ft, rd_kafka_verify_ctx_t *ctx)
+    : ft_(ft), ctx_(ctx) {
+}
+
+int
+RdKafka::SslCertificateHelperImpl::get_error() const {
+    return ft_->error(ctx_);
+}
+
+int
+RdKafka::SslCertificateHelperImpl::get_depth() const {
+    return ft_->depth(ctx_);
+}
+
+void
+RdKafka::SslCertificateHelperImpl::set_error(int error) {
+    ft_->set_error(ctx_, error);
+}
+
+void*
+RdKafka::SslCertificateHelperImpl::get_x509_ctx() const {
+    return ctx_;
 }
 
 namespace RdKafka {

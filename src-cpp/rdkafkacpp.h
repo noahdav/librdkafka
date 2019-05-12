@@ -855,6 +855,17 @@ public:
 };
 
 
+class RD_EXPORT SslCertificateHelper
+{
+public:
+    virtual int get_error() const = 0;
+    virtual int get_depth() const = 0;
+    virtual void set_error(int error) = 0;
+    virtual void *get_x509_ctx() const = 0;
+
+    virtual ~SslCertificateHelper() {};
+};
+
 
 /**
  * @brief SSL broker certificate verification class.
@@ -895,8 +906,7 @@ public:
   virtual bool ssl_cert_verify_cb (const std::string &broker_name,
                                    int32_t broker_id,
                                    bool preverify_ok,
-                                   void *x509_ctx,
-                                   int depth,
+                                   SslCertificateHelper *helper,
                                    const char *buf, size_t size,
                                    std::string &errstr) = 0;
 

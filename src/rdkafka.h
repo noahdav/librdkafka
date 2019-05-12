@@ -235,6 +235,7 @@ typedef struct rd_kafka_topic_conf_s rd_kafka_topic_conf_t;
 typedef struct rd_kafka_queue_s rd_kafka_queue_t;
 typedef struct rd_kafka_op_s rd_kafka_event_t;
 typedef struct rd_kafka_topic_result_s rd_kafka_topic_result_t;
+typedef struct rd_kafka_verify_ctx_s rd_kafka_verify_ctx_t;
 /* @endcond */
 
 
@@ -1961,13 +1962,21 @@ void rd_kafka_conf_set_open_cb (rd_kafka_conf_t *conf,
                                                 void *opaque));
 #endif
 
+/**
+* @brief Function table used by validation callbacks.
+*/
+typedef struct rd_kafka_ssl_verify_ft {
+    int (*error) (rd_kafka_verify_ctx_t *ctx);
+    int (*depth) (rd_kafka_verify_ctx_t *ctx);
+    void (*set_error) (rd_kafka_verify_ctx_t *ctx, int error);
+} rd_kafka_ssl_verify_ft;
 
 /**
  * @brief Sets the verification callback of the broker certificate
  *
  * The verification callback is triggered from internal librdkafka threads
  * upon connecting to a broker. On each connection attempt the callback
- * will be called for each certificate in the broker's certificate chain,
+ * will be cocalled for each certificate in the broker's certificate chain,
  * starting at the root certification, as long as the application callback.
  * returns 1 (valid certificate).
  * \c broker_name and \c broker_id correlate to the broker the connection
@@ -1998,13 +2007,12 @@ rd_kafka_conf_res_t rd_kafka_conf_set_ssl_cert_verify_cb (
         int (*ssl_cert_verify_cb) (rd_kafka_t *rk,
                                    const char *broker_name,
                                    int32_t broker_id,
-                                   int preverify_ok, void *x509_ctx,
-                                   int depth,
+                                   int preverify_ok,
+                                   rd_kafka_verify_ctx_t *x509_ctx,
+                                   rd_kafka_ssl_verify_ft* callbacks,
                                    const char *buf, size_t size,
                                    char *errstr, size_t errstr_size,
                                    void *opaque));
-
-
 /**
  * @enum rd_kafka_cert_type_t
  *

@@ -305,6 +305,23 @@ static int rd_kafka_transport_ssl_passwd_cb (char *buf, int size, int rwflag,
         return pwlen;
 }
 
+static int
+rd_kafka_get_error(rd_kafka_verify_ctx_t *ctx)
+{
+    return X509_STORE_CTX_get_error((X509_STORE_CTX *)ctx);
+}
+
+static int
+rd_kafka_get_depth(rd_kafka_verify_ctx_t *ctx)
+{
+    return X509_STORE_CTX_get_error_depth((X509_STORE_CTX *)ctx);
+}
+
+static void
+rd_kafka_set_error(rd_kafka_verify_ctx_t *ctx, int error)
+{
+    X509_STORE_CTX_set_error((X509_STORE_CTX *)ctx, error);
+}
 
 /**
  * @brief OpenSSL callback to perform additional broker certificate
@@ -324,7 +341,6 @@ rd_kafka_transport_ssl_cert_verify_cb (int preverify_ok,
         X509 *cert;
         char *buf = NULL;
         int   buf_size;
-        int   depth;
         char  errstr[512];
         int   ok;
 
@@ -339,8 +355,6 @@ rd_kafka_transport_ssl_cert_verify_cb (int preverify_ok,
                 return 0;
         }
 
-        depth = X509_STORE_CTX_get_error_depth(x509_ctx);
-
         buf_size = i2d_X509(cert, (unsigned char **)&buf);
         if (buf_size < 0 || !buf) {
                 rd_rkb_log(rkb, LOG_ERR, "SSLCERTVRFY",
@@ -350,13 +364,15 @@ rd_kafka_transport_ssl_cert_verify_cb (int preverify_ok,
 
         *errstr = '\0';
 
+        rd_kafka_ssl_verify_ft ft = { &rd_kafka_get_error, &rd_kafka_get_depth, &rd_kafka_set_error };
+
         /* Call application's verification callback. */
         ok = rk->rk_conf.ssl.cert_verify_cb(rk,
                                             rkb->rkb_nodename,
                                             rkb->rkb_nodeid,
                                             preverify_ok,
-                                            (void *)x509_ctx,
-                                            depth,
+                                            (rd_kafka_verify_ctx_t *)x509_ctx,
+                                            &ft,
                                             buf, (size_t)buf_size,
                                             errstr, sizeof(errstr),
                                             rk->rk_conf.opaque);
